@@ -106,48 +106,50 @@ button:hover, .btn-small:hover {
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }
 
-/* layout responsivo */
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
-@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
-
-/* utilitários */
-.modalidades {display: flex; flex-direction: column; }
+@media (max-width: 640px) {
 .hidden { display: none !important; }
+  /* Modalidades: 1 coluna */
+  .modalidades {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 
-/* Bloco de cada filho: translúcido e sem borda pesada */
-.filho {
-  padding: 12px;
-  border: none;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  background: rgba(255,255,255,0.12); /* translúcido, combina com .glass */
-  color: #111;
-}
+  /* Label vira linha (checkbox + texto lado a lado) */
+  .modalidades label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #ffffff;
+    margin-top: 0; /* remove espaço extra */
+  }
 
-/* Título do filho */
-.filho h4 {
-  margin: 0 0 8px 0;
-  color: var(--cor-primaria);
-  font-size: 1rem;
-}
+  /* Checkbox NÃO pode ter width 100% */
+  .modalidades input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    transform: scale(0.95);
+  }
 
-/* Inputs e selects dentro do bloco do filho */
-.filho input,
-.filho select {
-  background: rgba(255,255,255,0.95);
-  color: #111;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
-}
+  /* Texto auxiliar */
+  .modalidades + p,
+  .modalidades + small {
+    font-size: 0.75rem;
+    opacity: 0.75;
+  }
 
-/* Wrapper de modalidades do filho (quando visível) */
-.fmodalidades-wrapper {
-  margin-top: 8px;
-}
-.fmodalidades-wrapper .modalidades label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 8px;
+  /* Bloco do filho */
+  .filho {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .filho h4 {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
 }
