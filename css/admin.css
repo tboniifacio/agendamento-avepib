@@ -1,0 +1,120 @@
+/* Dashboard Administrativa - CSS Simples */
+
+.admin-header {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px);
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.admin-header h1 {
+  color: #fff;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.estatisticas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-box {
+  background: rgba(255,255,255,0.15);
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-box h2 {
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.stat-number {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.lista-inscricoes {
+  margin-top: 30px;
+}
+
+.lista-inscricoes h2 {
+  color: #fff;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+}
+
+.inscricao-item {
+  background: rgba(255,255,255,0.15);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.inscricao-item h3 {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  padding-bottom: 10px;
+}
+
+.inscricao-item p {
+  color: #fff;
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
+.inscricao-item strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.inscricao-item .pessoas-lista {
+  margin-top: 10px;
+  padding-left: 20px;
+}
+
+.inscricao-item .pessoas-lista li {
+  color: #fff;
+  margin: 5px 0;
+  list-style-type: disc;
+}
+
+.inscricao-item .endereco-info {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.inscricao-item .data-info {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.8);
+}
+
+.inscricao-item .pessoa-info {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.inscricao-item .pessoa-info:last-of-type {
+  border-bottom: none;
+}
+
+.inscricao-item .filho-detalhe {
+  margin-bottom: 15px;
+  padding-left: 15px;
+  border-left: 2px solid rgba(255,255,255,0.3);
+}

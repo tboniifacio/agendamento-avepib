@@ -1,0 +1,153 @@
+:root {
+  --cor-primaria: #1e3a8a;
+  --cor-secundaria: #2563eb;
+  --gap: 12px;
+  --radius: 12px;
+  --btn-padding-sm: 6px 10px;
+  --btn-font-sm: 0.85rem;
+}
+
+/* reset */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; min-height: 100vh; }
+
+/* fundo ocupa toda a tela */
+body {
+  background: linear-gradient(rgba(0,0,0,0.36), rgba(0,0,0,0.36)),
+              url("../img/fundo.jpeg") no-repeat center top;
+  background-size: cover;
+  background-attachment: fixed;
+  font-family: Arial, sans-serif;
+  color: #fff;
+}
+
+/* container central */
+.container { max-width: 900px; margin: 48px auto; padding: 0 20px; }
+
+/* card que agrupa banner + formulário */
+.card {
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: var(--radius);
+  overflow: hidden; /* garante que a imagem e o conteúdo respeitem o radius */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+/* topo com imagem (banner) */
+.form-header img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* área do formulário (glass) */
+.glass {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(12px);
+  padding: 32px;
+  border-radius: 0 0 var(--radius) var(--radius); /* arredonda só a parte inferior visualmente */
+}
+
+/* tipografia e controles */
+legend {
+  color: var(--cor-primaria);
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+fieldset {
+  border: none;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 6px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.95);
+  color: #111;
+  font-size: 1rem;
+  transition: box-shadow .18s ease, transform .12s ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+}
+
+button, .btn-small {
+  background: linear-gradient(135deg, var(--cor-primaria), var(--cor-secundaria));
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: var(--btn-padding-sm);
+  font-size: var(--btn-font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+button:hover, .btn-small:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+
+/* layout responsivo */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+@media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+
+/* utilitários */
+.modalidades { display: flex; flex-wrap: wrap; gap: 10px; }
+.hidden { display: none !important; }
+
+/* Bloco de cada filho: translúcido e sem borda pesada */
+.filho {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.12); /* translúcido, combina com .glass */
+  color: #111;
+}
+
+/* Título do filho */
+.filho h4 {
+  margin: 0 0 8px 0;
+  color: var(--cor-primaria);
+  font-size: 1rem;
+}
+
+/* Inputs e selects dentro do bloco do filho */
+.filho input,
+.filho select {
+  background: rgba(255,255,255,0.95);
+  color: #111;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+/* Wrapper de modalidades do filho (quando visível) */
+.fmodalidades-wrapper {
+  margin-top: 8px;
+}
+.fmodalidades-wrapper .modalidades label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
