@@ -111,7 +111,7 @@ button:hover, .btn-small:hover {
 @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
 
 /* utilitários */
-.modalidades { display: flex; flex-wrap: wrap; gap: 10px; }
+.modalidades {display: flex; flex-direction: column; }
 .hidden { display: none !important; }
 
 /* Bloco de cada filho: translúcido e sem borda pesada */
