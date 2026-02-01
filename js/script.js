@@ -177,7 +177,7 @@ function inicializarFormulario() {
           '<label style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;"><input type="checkbox" class="filho-menor-1-ano" name="filho-menor-1">Criança com menos de 1 ano</label>' +
           '<label>Idade (anos)</label>' +
           '<input type="number" class="filho-idade" placeholder="Idade" required min="0">' +
-          '<label>Deseja se inscrever em alguma modalidade?</label>' +
+          '<label>Deseja se inscrever em alguma competição?</label>' +
           '<select class="filho-has-modalidade">' +
           '<option value="nao">Não</option><option value="sim">Sim</option>' +
           '</select>' +
