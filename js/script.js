@@ -1,602 +1,675 @@
+/* ===============================
+   CONSTANTES
+=============================== */
+const MODALIDADES = ["Futebol", "Peteca", "Maratona", "Truco", "Dominó", "Tiro ao alvo", "Salto à distância"];
+const IDADE_MENOR_1_ANO = "Menor de 1 ano";
+const ADMIN_SENHA = "admin123";
+const IDADE_PAGANTE_MIN = 16;
+const VALOR_POR_PAGANTE = 150;
+const PIX_INFO = "38 999216747 (Lucivania da Silva Oliveira)";
+
+/* ===============================
+   TELAS (formulário / login / dashboard)
+=============================== */
 function mostrarFormulario() {
   document.querySelector('.container').style.display = 'block';
-  document.getElementById('adminDashboard').classList.add('hidden');
-  document.getElementById('adminLogin').classList.add('hidden');
+  var adminDashboard = document.getElementById('adminDashboard');
+  var adminLogin = document.getElementById('adminLogin');
+  if (adminDashboard) adminDashboard.classList.add('hidden');
+  if (adminLogin) adminLogin.classList.add('hidden');
 }
 
-    // Modalidades disponíveis
-    const MODALIDADES = ["Futebol", "Peteca", "Maratona", "Truco", "Dominó", "Tiro ao alvo"];
-    
-    // Senha do admin (em produção, usar autenticação adequada)
-    const ADMIN_SENHA = "admin123";
-    
-    // Chave para localStorage
-    const STORAGE_KEY = "avepib_inscricoes";
-    const ADMIN_AUTH_KEY = "avepib_admin_auth";
-    
-    // Regras de pagamento
-    const IDADE_PAGANTE_MIN = 16;
-    const VALOR_POR_PAGANTE = 150;
+function mostrarDashboard() {
+  document.querySelector('.container').style.display = 'none';
+  var adminDashboard = document.getElementById('adminDashboard');
+  var adminLogin = document.getElementById('adminLogin');
+  if (adminDashboard) adminDashboard.classList.remove('hidden');
+  if (adminLogin) adminLogin.classList.add('hidden');
+  atualizarDashboard();
+  adicionarBotaoPDF();
+}
 
-    // Verificar se é admin ao carregar
+function mostrarLogin() {
+  document.querySelector('.container').style.display = 'none';
+  var adminDashboard = document.getElementById('adminDashboard');
+  var adminLogin = document.getElementById('adminLogin');
+  if (adminDashboard) adminDashboard.classList.add('hidden');
+  if (adminLogin) adminLogin.classList.remove('hidden');
+}
+
+/* ===============================
+   MENSAGENS (sem alert/prompt)
+=============================== */
+function mostrarMensagem(texto, tipo) {
+  tipo = tipo || 'sucesso';
+  var msg = document.getElementById('mensagemForm');
+  if (!msg) return;
+  msg.textContent = texto;
+  msg.className = 'mensagem ' + tipo;
+  msg.classList.remove('hidden');
+  setTimeout(function() {
+    msg.classList.add('hidden');
+  }, 6000);
+}
+
+function mostrarPopupSucesso(totalPagar, infoPix) {
+  var overlay = document.createElement('div');
+  overlay.id = 'popupSucessoOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;color:#111;padding:28px 32px;border-radius:12px;max-width:400px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
+  box.innerHTML = '<h3 style="margin:0 0 16px 0;font-size:1.2rem;">Inscrição realizada com sucesso!</h3>' +
+    '<p style="margin:8px 0;"><strong>Total a pagar:</strong> ' + formatarMoeda(totalPagar) + '</p>' +
+    '<p style="margin:8px 0;"><strong>PIX:</strong> ' + (infoPix || PIX_INFO) + '</p>' +
+    '<p style="margin:16px 0 0 0;font-size:0.9rem;color:#555;">Esta mensagem permanece até você atualizar a página.</p>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+function mostrarConfirmacaoExclusao(id, callback) {
+  var overlay = document.createElement('div');
+  overlay.id = 'popupConfirmOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;color:#111;padding:24px 28px;border-radius:12px;max-width:360px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
+  box.innerHTML = '<p style="margin:0 0 20px 0;">Tem certeza que deseja excluir esta inscrição?</p>' +
+    '<div style="display:flex;gap:12px;justify-content:center;">' +
+    '<button type="button" id="btnConfirmarExcluirSim" class="btn-small">Sim</button>' +
+    '<button type="button" id="btnConfirmarExcluirNao" class="btn-small">Não</button>' +
+    '</div>';
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  function remover() {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  document.getElementById('btnConfirmarExcluirSim').addEventListener('click', function() {
+    remover();
+    if (typeof callback === 'function') callback();
+  });
+  document.getElementById('btnConfirmarExcluirNao').addEventListener('click', remover);
+}
+
+/* ===============================
+   INICIALIZAÇÃO
+=============================== */
 window.addEventListener('DOMContentLoaded', function() {
-  mostrarFormulario(); // 👈 SEMPRE começa no formulário
+  mostrarFormulario();
   inicializarFormulario();
   inicializarLoginAdmin();
   adicionarLinkAdmin();
 });
 
-    // Função para mostrar formulário
-function mostrarDashboard() {
-  document.querySelector('.container').style.display = 'none';
-  document.getElementById('adminDashboard').classList.remove('hidden');
-  document.getElementById('adminLogin').classList.add('hidden');
+/* ===============================
+   FORMULÁRIO
+=============================== */
+function inicializarFormulario() {
+  var form = document.getElementById('formInscricao');
+  var respHasModalidade = document.getElementById('respHasModalidade');
+  var respModalidadesContainer = document.getElementById('respModalidadesContainer');
+  var temConjuge = document.getElementById('temConjuge');
+  var conjugeArea = document.getElementById('conjugeArea');
+  var conjHasModalidade = document.getElementById('conjHasModalidade');
+  var conjModalidadesContainer = document.getElementById('conjModalidadesContainer');
+  var temFilhos = document.getElementById('temFilhos');
+  var filhosArea = document.getElementById('filhosArea');
+  var qtdFilhos = document.getElementById('qtdFilhos');
+  var listaFilhos = document.getElementById('listaFilhos');
 
-  atualizarDashboard();
-  adicionarBotaoPDF(); // 👈 CHAMADA OBRIGATÓRIA
+  if (!form) return;
+
+  criarModalidades('respModalidadesContainer', MODALIDADES);
+
+  respHasModalidade.addEventListener('change', function() {
+    if (this.value === 'sim') {
+      respModalidadesContainer.classList.remove('hidden');
+      respModalidadesContainer.setAttribute('aria-hidden', 'false');
+    } else {
+      respModalidadesContainer.classList.add('hidden');
+      respModalidadesContainer.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  temConjuge.addEventListener('change', function() {
+    if (this.value === 'sim') {
+      conjugeArea.classList.remove('hidden');
+      conjugeArea.setAttribute('aria-hidden', 'false');
+      criarModalidades('conjModalidadesContainer', MODALIDADES);
+    } else {
+      conjugeArea.classList.add('hidden');
+      conjugeArea.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  conjHasModalidade.addEventListener('change', function() {
+    if (this.value === 'sim') {
+      conjModalidadesContainer.classList.remove('hidden');
+      conjModalidadesContainer.setAttribute('aria-hidden', 'false');
+    } else {
+      conjModalidadesContainer.classList.add('hidden');
+      conjModalidadesContainer.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  temFilhos.addEventListener('change', function() {
+    if (this.value === 'sim') {
+      filhosArea.classList.remove('hidden');
+      filhosArea.setAttribute('aria-hidden', 'false');
+    } else {
+      filhosArea.classList.add('hidden');
+      filhosArea.setAttribute('aria-hidden', 'true');
+      if (listaFilhos) listaFilhos.innerHTML = '';
+    }
+  });
+
+  if (qtdFilhos && listaFilhos) {
+    qtdFilhos.addEventListener('input', function() {
+      var qtd = parseInt(this.value, 10) || 0;
+      listaFilhos.innerHTML = '';
+      for (var i = 0; i < qtd; i++) {
+        var filhoDiv = document.createElement('div');
+        filhoDiv.className = 'filho';
+        filhoDiv.innerHTML = '<h4>Filho ' + (i + 1) + '</h4>' +
+          '<label>Nome completo</label>' +
+          '<input type="text" class="filho-nome" placeholder="Nome completo" required>' +
+          '<label style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;"><input type="checkbox" class="filho-menor-1-ano" name="filho-menor-1">Criança com menos de 1 ano</label>' +
+          '<label>Idade (anos)</label>' +
+          '<input type="number" class="filho-idade" placeholder="Idade" required min="0">' +
+          '<label>Deseja se inscrever em alguma modalidade?</label>' +
+          '<select class="filho-has-modalidade">' +
+          '<option value="nao">Não</option><option value="sim">Sim</option>' +
+          '</select>' +
+          '<div class="fmodalidades-wrapper hidden">' +
+          '<label>Modalidades</label>' +
+          '<div class="modalidades filho-modalidades"></div></div>';
+        listaFilhos.appendChild(filhoDiv);
+
+        var filhoModalidadesDiv = filhoDiv.querySelector('.filho-modalidades');
+        criarModalidadesCheckboxes(filhoModalidadesDiv, MODALIDADES);
+
+        var filhoMenor1Ano = filhoDiv.querySelector('.filho-menor-1-ano');
+        filhoMenor1Ano.addEventListener('change', function() {
+          var idadeInput = this.closest('.filho').querySelector('.filho-idade');
+          if (!idadeInput) return;
+          if (this.checked) {
+            idadeInput.removeAttribute('required');
+            idadeInput.value = '';
+            idadeInput.removeAttribute('readonly');
+          } else {
+            idadeInput.setAttribute('required', 'required');
+            idadeInput.removeAttribute('readonly');
+          }
+        });
+
+        var filhoHasModalidade = filhoDiv.querySelector('.filho-has-modalidade');
+        var filhoModalidadesWrapper = filhoDiv.querySelector('.fmodalidades-wrapper');
+        filhoHasModalidade.addEventListener('change', function() {
+          if (this.value === 'sim') {
+            filhoModalidadesWrapper.classList.remove('hidden');
+          } else {
+            filhoModalidadesWrapper.classList.add('hidden');
+          }
+        });
+      }
+    });
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    salvarInscricao();
+  });
 }
 
+function criarModalidades(containerId, modalidades) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var modalidadesDiv = container.querySelector('.modalidades');
+  if (!modalidadesDiv) return;
+  modalidadesDiv.innerHTML = '';
+  criarModalidadesCheckboxes(modalidadesDiv, modalidades);
+}
 
-    // Função para mostrar login
-    function mostrarLogin() {
-      document.querySelector('.container').style.display = 'none';
-      document.getElementById('adminDashboard').classList.add('hidden');
-      document.getElementById('adminLogin').classList.remove('hidden');
-    }
+function criarModalidadesCheckboxes(container, modalidades) {
+  if (!container) return;
+  modalidades.forEach(function(modalidade) {
+    var label = document.createElement('label');
+    label.style.display = 'inline-flex';
+    label.style.alignItems = 'center';
+    label.style.gap = '6px';
+    label.style.marginRight = '8px';
+    var checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = modalidade;
+    checkbox.name = 'modalidade';
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(modalidade));
+    container.appendChild(label);
+  });
+}
 
-    // Inicializar formulário
-    function inicializarFormulario() {
-      const form = document.getElementById('formInscricao');
-      const respHasModalidade = document.getElementById('respHasModalidade');
-      const respModalidadesContainer = document.getElementById('respModalidadesContainer');
-      const temConjuge = document.getElementById('temConjuge');
-      const conjugeArea = document.getElementById('conjugeArea');
-      const conjHasModalidade = document.getElementById('conjHasModalidade');
-      const conjModalidadesContainer = document.getElementById('conjModalidadesContainer');
-      const temFilhos = document.getElementById('temFilhos');
-      const filhosArea = document.getElementById('filhosArea');
-      const qtdFilhos = document.getElementById('qtdFilhos');
-      const listaFilhos = document.getElementById('listaFilhos');
+function ehPagante(idade) {
+  return (idade | 0) >= IDADE_PAGANTE_MIN;
+}
 
-      // Criar checkboxes de modalidades para responsável
-      criarModalidades('respModalidadesContainer', MODALIDADES);
+function formatarMoeda(valor) {
+  return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
-      // Mostrar/ocultar modalidades do responsável
-      respHasModalidade.addEventListener('change', function() {
-        if (this.value === 'sim') {
-          respModalidadesContainer.classList.remove('hidden');
-          respModalidadesContainer.setAttribute('aria-hidden', 'false');
-        } else {
-          respModalidadesContainer.classList.add('hidden');
-          respModalidadesContainer.setAttribute('aria-hidden', 'true');
-        }
-      });
+function obterPessoasDaInscricao(inscricao) {
+  var pessoas = [];
+  if (inscricao && inscricao.responsavel) pessoas.push(inscricao.responsavel);
+  if (inscricao && inscricao.conjuge) pessoas.push(inscricao.conjuge);
+  if (inscricao && Array.isArray(inscricao.filhos)) {
+    inscricao.filhos.forEach(function(filho) { pessoas.push(filho); });
+  }
+  return pessoas;
+}
 
-      // Mostrar/ocultar área do cônjuge
-      temConjuge.addEventListener('change', function() {
-        if (this.value === 'sim') {
-          conjugeArea.classList.remove('hidden');
-          conjugeArea.setAttribute('aria-hidden', 'false');
-          criarModalidades('conjModalidadesContainer', MODALIDADES);
-        } else {
-          conjugeArea.classList.add('hidden');
-          conjugeArea.setAttribute('aria-hidden', 'true');
-        }
-      });
+function obterModalidadesSelecionadas(containerId) {
+  var container = document.getElementById(containerId);
+  if (!container) return [];
+  var checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.prototype.slice.call(checkboxes).map(function(cb) { return cb.value; });
+}
 
-      // Mostrar/ocultar modalidades do cônjuge
-      conjHasModalidade.addEventListener('change', function() {
-        if (this.value === 'sim') {
-          conjModalidadesContainer.classList.remove('hidden');
-          conjModalidadesContainer.setAttribute('aria-hidden', 'false');
-        } else {
-          conjModalidadesContainer.classList.add('hidden');
-          conjModalidadesContainer.setAttribute('aria-hidden', 'true');
-        }
-      });
+function obterModalidadesSelecionadasFilho(filhoDiv) {
+  if (!filhoDiv) return [];
+  var modalidadesContainer = filhoDiv.querySelector('.filho-modalidades');
+  if (!modalidadesContainer) return [];
+  var checkboxes = modalidadesContainer.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.prototype.slice.call(checkboxes).map(function(cb) { return cb.value; });
+}
 
-      // Mostrar/ocultar área de filhos
-      temFilhos.addEventListener('change', function() {
-        if (this.value === 'sim') {
-          filhosArea.classList.remove('hidden');
-          filhosArea.setAttribute('aria-hidden', 'false');
-        } else {
-          filhosArea.classList.add('hidden');
-          filhosArea.setAttribute('aria-hidden', 'true');
-          listaFilhos.innerHTML = '';
-        }
-      });
-
-      // Gerar campos para filhos
-      qtdFilhos.addEventListener('input', function() {
-        const qtd = parseInt(this.value) || 0;
-        listaFilhos.innerHTML = '';
-        for (let i = 0; i < qtd; i++) {
-          const filhoDiv = document.createElement('div');
-          filhoDiv.className = 'filho';
-          filhoDiv.innerHTML = `
-            <h4>Filho ${i + 1}</h4>
-            <label>Nome completo</label>
-            <input type="text" class="filho-nome" placeholder="Nome completo" required>
-            <label>Idade (anos)</label>
-            <input type="number" class="filho-idade" placeholder="Idade" required min="0">
-            <label>Deseja se inscrever em alguma modalidade?</label>
-            <select class="filho-has-modalidade">
-              <option value="nao">Não</option>
-              <option value="sim">Sim</option>
-            </select>
-            <div class="fmodalidades-wrapper hidden">
-              <label>Modalidades</label>
-              <div class="modalidades filho-modalidades"></div>
-            </div>
-          `;
-          listaFilhos.appendChild(filhoDiv);
-          
-          const filhoModalidadesDiv = filhoDiv.querySelector('.filho-modalidades');
-          criarModalidadesCheckboxes(filhoModalidadesDiv, MODALIDADES);
-          
-          const filhoHasModalidade = filhoDiv.querySelector('.filho-has-modalidade');
-          const filhoModalidadesWrapper = filhoDiv.querySelector('.fmodalidades-wrapper');
-          
-          filhoHasModalidade.addEventListener('change', function() {
-            if (this.value === 'sim') {
-              filhoModalidadesWrapper.classList.remove('hidden');
-            } else {
-              filhoModalidadesWrapper.classList.add('hidden');
-            }
-          });
-        }
-      });
-
-      // Submissão do formulário
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        salvarInscricao();
-      });
-    }
-
-    // Criar modalidades (checkboxes)
-    function criarModalidades(containerId, modalidades) {
-      const container = document.getElementById(containerId);
-      const modalidadesDiv = container.querySelector('.modalidades');
-      modalidadesDiv.innerHTML = '';
-      criarModalidadesCheckboxes(modalidadesDiv, modalidades);
-    }
-
-    function criarModalidadesCheckboxes(container, modalidades) {
-      modalidades.forEach(function(modalidade) {
-        const label = document.createElement('label');
-        label.style.display = 'inline-flex';
-        label.style.alignItems = 'center';
-        label.style.gap = '6px';
-        label.style.marginRight = '8px';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = modalidade;
-        checkbox.name = 'modalidade';
-        
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(modalidade));
-        container.appendChild(label);
-      });
-    }
-
-    // Verificar se é pagante (até 15 anos não paga; 16+ paga)
-    function ehPagante(idade) {
-      return idade >= IDADE_PAGANTE_MIN;
-    }
-    
-    function formatarMoeda(valor) {
-      return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-    
-    function obterPessoasDaInscricao(inscricao) {
-      const pessoas = [];
-      if (inscricao && inscricao.responsavel) pessoas.push(inscricao.responsavel);
-      if (inscricao && inscricao.conjuge) pessoas.push(inscricao.conjuge);
-      if (inscricao && Array.isArray(inscricao.filhos)) {
-        inscricao.filhos.forEach(function(filho) { pessoas.push(filho); });
-      }
-      return pessoas;
-    }
-
-    // Salvar inscrição
-    function salvarInscricao() {
-      const form = document.getElementById('formInscricao');
-      
-      // Validar campos obrigatórios
-      if (!form.checkValidity()) {
-        form.reportValidity();
+/* ===============================
+   SALVAR INSCRIÇÃO (Firestore)
+=============================== */
+function salvarInscricao() {
+  var form = document.getElementById('formInscricao');
+  if (!form) return;
+  var filhosNodes = form.querySelectorAll('.filho');
+  for (var i = 0; i < filhosNodes.length; i++) {
+    var filhoDiv = filhosNodes[i];
+    var menor1AnoCheck = filhoDiv.querySelector('.filho-menor-1-ano');
+    var menor1Ano = menor1AnoCheck && menor1AnoCheck.checked;
+    var idadeInput = filhoDiv.querySelector('.filho-idade');
+    if (menor1Ano) {
+      idadeInput.removeAttribute('required');
+    } else {
+      idadeInput.setAttribute('required', 'required');
+      if (!idadeInput.value || isNaN(parseInt(idadeInput.value, 10))) {
+        idadeInput.reportValidity();
         return;
       }
-      
-      // Validar cônjuge se selecionado
-      if (document.getElementById('temConjuge').value === 'sim') {
-        const conjNome = document.getElementById('conjNome').value.trim();
-        const conjIdade = document.getElementById('conjIdade').value;
-        if (!conjNome || !conjIdade) {
-          alert('Por favor, preencha todos os dados do cônjuge.');
-          return;
-        }
-      }
-      
-      // Validar filhos se selecionado
-      if (document.getElementById('temFilhos').value === 'sim') {
-        const qtdFilhos = parseInt(document.getElementById('qtdFilhos').value) || 0;
-        const filhosDivs = document.querySelectorAll('.filho');
-        if (qtdFilhos === 0 || filhosDivs.length === 0) {
-          alert('Por favor, informe a quantidade de filhos e preencha os dados.');
-          return;
-        }
-        for (let i = 0; i < filhosDivs.length; i++) {
-          const filhoNome = filhosDivs[i].querySelector('.filho-nome').value.trim();
-          const filhoIdade = filhosDivs[i].querySelector('.filho-idade').value;
-          if (!filhoNome || !filhoIdade) {
-            alert(`Por favor, preencha todos os dados do filho ${i + 1}.`);
-            return;
-          }
-        }
-      }
-      
-      // Dados do responsável
-      const responsavel = {
-        nome: document.getElementById('respNome').value,
-        idade: parseInt(document.getElementById('respIdade').value),
-        modalidades: obterModalidadesSelecionadas('respModalidadesContainer'),
-        tipo: 'responsavel',
-        pagante: ehPagante(parseInt(document.getElementById('respIdade').value))
-      };
-
-      const inscricao = {
-        id: Date.now(),
-        data: new Date().toLocaleString('pt-BR'),
-        responsavel: responsavel,
-        endereco: {
-          rua: document.getElementById('rua').value,
-          numero: document.getElementById('numero').value,
-          bairro: document.getElementById('bairro').value
-        },
-        conjuge: null,
-        filhos: []
-      };
-
-      // Dados do cônjuge
-      if (document.getElementById('temConjuge').value === 'sim') {
-        const conjIdade = parseInt(document.getElementById('conjIdade').value);
-        inscricao.conjuge = {
-          nome: document.getElementById('conjNome').value,
-          idade: conjIdade,
-          modalidades: obterModalidadesSelecionadas('conjModalidadesContainer'),
-          tipo: 'conjuge',
-          pagante: ehPagante(conjIdade)
-        };
-      }
-
-      // Dados dos filhos
-      const filhosDivs = document.querySelectorAll('.filho');
-      filhosDivs.forEach(function(filhoDiv) {
-        const filhoIdade = parseInt(filhoDiv.querySelector('.filho-idade').value);
-        const filho = {
-          nome: filhoDiv.querySelector('.filho-nome').value,
-          idade: filhoIdade,
-          modalidades: obterModalidadesSelecionadasFilho(filhoDiv),
-          tipo: 'filho',
-          pagante: ehPagante(filhoIdade)
-        };
-        inscricao.filhos.push(filho);
-      });
-
-      // Salvar no localStorage
-      let inscricoes = db.collection("inscricoes").get().then(snapshot => {
-  snapshot.forEach(doc => {
-    const inscricao = { id: doc.id, ...doc.data() };
-  });
-});
-      inscricoes.push(inscricao);
-    db.collection("inscricoes").add(inscricao);
-
-
-      // Limpar formulário
-      form.reset();
-      document.getElementById('respModalidadesContainer').classList.add('hidden');
-      document.getElementById('conjugeArea').classList.add('hidden');
-      document.getElementById('filhosArea').classList.add('hidden');
-      document.getElementById('listaFilhos').innerHTML = '';
-
-      // Mensagem final com valores e PIX
-      const pessoasInscricao = obterPessoasDaInscricao(inscricao);
-      const qtdPagantes = pessoasInscricao.filter(function(p) { return ehPagante(p.idade); }).length;
-      const totalPagar = qtdPagantes * VALOR_POR_PAGANTE;
-      
-      alert(
-        'Inscrição realizada com sucesso!\n\n' +
-        'Valor por pagante: ' + formatarMoeda(VALOR_POR_PAGANTE) + '\n' +
-        'Total a pagar: ' + formatarMoeda(totalPagar) + '\n\n' +
-        'Pagamento via PIX:\n' +
-        'Chave pix: 38 999216747\n' +
-        'Nome: Lucivania da Silva Oliveira\n'
-      );
     }
+  }
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
 
-    // Obter modalidades selecionadas
-    function obterModalidadesSelecionadas(containerId) {
-      const container = document.getElementById(containerId);
-      const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
-      return Array.from(checkboxes).map(cb => cb.value);
+  var responsavel = {
+    nome: document.getElementById('respNome').value,
+    idade: parseInt(document.getElementById('respIdade').value, 10),
+    modalidades: obterModalidadesSelecionadas('respModalidadesContainer'),
+    tipo: 'responsavel',
+    pagante: ehPagante(parseInt(document.getElementById('respIdade').value, 10))
+  };
+
+  var inscricao = {
+    data: new Date().toLocaleString('pt-BR'),
+    responsavel: responsavel,
+    endereco: {
+      rua: document.getElementById('rua').value,
+      numero: document.getElementById('numero').value,
+      bairro: document.getElementById('bairro').value
+    },
+    conjuge: null,
+    filhos: []
+  };
+
+  if (document.getElementById('temConjuge').value === 'sim') {
+    var idadeConj = parseInt(document.getElementById('conjIdade').value, 10);
+    inscricao.conjuge = {
+      nome: document.getElementById('conjNome').value,
+      idade: idadeConj,
+      modalidades: obterModalidadesSelecionadas('conjModalidadesContainer'),
+      tipo: 'conjuge',
+      pagante: ehPagante(idadeConj)
+    };
+  }
+
+  document.querySelectorAll('.filho').forEach(function(filhoDiv) {
+    var menor1Ano = filhoDiv.querySelector('.filho-menor-1-ano') && filhoDiv.querySelector('.filho-menor-1-ano').checked;
+    var idadeFilho;
+    var paganteFilho;
+    if (menor1Ano) {
+      idadeFilho = IDADE_MENOR_1_ANO;
+      paganteFilho = false;
+    } else {
+      idadeFilho = parseInt(filhoDiv.querySelector('.filho-idade').value, 10);
+      paganteFilho = ehPagante(idadeFilho);
     }
-
-    function obterModalidadesSelecionadasFilho(filhoDiv) {
-      const checkboxes = filhoDiv.querySelectorAll('input[type="checkbox"]:checked');
-      return Array.from(checkboxes).map(cb => cb.value);
-    }
-
-    // Inicializar login admin
-    function inicializarLoginAdmin() {
-      const formLogin = document.getElementById('formLoginAdmin');
-      const btnSair = document.getElementById('btnSairAdmin');
-
-      formLogin.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const senha = document.getElementById('adminSenha').value;
-        if (senha === ADMIN_SENHA) {
-          mostrarDashboard();
-        } else {
-          alert('Senha incorreta!');
-        }
-      });
-
-     btnSair.addEventListener('click', function() {
-  mostrarFormulario();
-  adicionarLinkAdmin();
-});
-
-    }
-
-    // Atualizar dashboard
-    function atualizarDashboard() {
-      const inscricoes = db.collection("inscricoes").get().then(snapshot => {
-  snapshot.forEach(doc => {
-    const inscricao = { id: doc.id, ...doc.data() };
-  });
-});
-      const listaInscricoes = document.getElementById('listaInscricoes');
-      const listaPagantesOrganizada = document.getElementById('listaPagantesOrganizada');
-      const listaNaoPagantesOrganizada = document.getElementById('listaNaoPagantesOrganizada');
-      const listasPorModalidade = document.getElementById('listasPorModalidade');
-      
-      let totalPagantes = 0;
-      let totalNaoPagantes = 0;
-      
-      const nomesPagantes = [];
-      const nomesNaoPagantes = [];
-      const pessoasPorModalidade = {};
-      MODALIDADES.forEach(function(m) { pessoasPorModalidade[m] = []; });
-
-      listaInscricoes.innerHTML = '';
-      if (listaPagantesOrganizada) listaPagantesOrganizada.innerHTML = '';
-      if (listaNaoPagantesOrganizada) listaNaoPagantesOrganizada.innerHTML = '';
-      if (listasPorModalidade) listasPorModalidade.innerHTML = '';
-
-      if (inscricoes.length === 0) {
-        listaInscricoes.innerHTML = '<p style="color: #fff;">Nenhuma inscrição cadastrada ainda.</p>';
-      } else {
-        inscricoes.forEach(function(inscricao) {
-          const item = document.createElement('div');
-          item.className = 'inscricao-item';
-          
-          let pessoasHTML = '';
-          
-          // Responsável
-          const respPagante = ehPagante(inscricao.responsavel.idade);
-          pessoasHTML += `
-            <div class="pessoa-info">
-              <p><strong>Responsável:</strong> ${inscricao.responsavel.nome}</p>
-              <p><strong>Idade:</strong> ${inscricao.responsavel.idade} anos</p>
-              <p><strong>Status:</strong> ${respPagante ? 'Pagante' : 'Não Pagante'}</p>
-              <p><strong>Modalidades:</strong> ${inscricao.responsavel.modalidades.length > 0 ? inscricao.responsavel.modalidades.join(', ') : 'Nenhuma'}</p>
-            </div>
-          `;
-          if (respPagante) { totalPagantes++; nomesPagantes.push(inscricao.responsavel.nome); }
-          else { totalNaoPagantes++; nomesNaoPagantes.push(inscricao.responsavel.nome); }
-          if (Array.isArray(inscricao.responsavel.modalidades)) {
-            inscricao.responsavel.modalidades.forEach(function(mod) {
-              if (!pessoasPorModalidade[mod]) pessoasPorModalidade[mod] = [];
-              pessoasPorModalidade[mod].push({ nome: inscricao.responsavel.nome, pagante: respPagante });
-            });
-          }
-          
-          // Cônjuge
-          if (inscricao.conjuge) {
-            const conjPagante = ehPagante(inscricao.conjuge.idade);
-            pessoasHTML += `
-              <div class="pessoa-info">
-                <p><strong>Cônjuge:</strong> ${inscricao.conjuge.nome}</p>
-                <p><strong>Idade:</strong> ${inscricao.conjuge.idade} anos</p>
-                <p><strong>Status:</strong> ${conjPagante ? 'Pagante' : 'Não Pagante'}</p>
-                <p><strong>Modalidades:</strong> ${inscricao.conjuge.modalidades.length > 0 ? inscricao.conjuge.modalidades.join(', ') : 'Nenhuma'}</p>
-              </div>
-            `;
-            if (conjPagante) { totalPagantes++; nomesPagantes.push(inscricao.conjuge.nome); }
-            else { totalNaoPagantes++; nomesNaoPagantes.push(inscricao.conjuge.nome); }
-            if (Array.isArray(inscricao.conjuge.modalidades)) {
-              inscricao.conjuge.modalidades.forEach(function(mod) {
-                if (!pessoasPorModalidade[mod]) pessoasPorModalidade[mod] = [];
-                pessoasPorModalidade[mod].push({ nome: inscricao.conjuge.nome, pagante: conjPagante });
-              });
-            }
-          }
-          
-          // Filhos
-          if (inscricao.filhos.length > 0) {
-            inscricao.filhos.forEach(function(filho) {
-              const filhoPagante = ehPagante(filho.idade);
-              pessoasHTML += `
-                <div class="pessoa-info filho-detalhe">
-                  <p><strong>Filho:</strong> ${filho.nome}</p>
-                  <p><strong>Idade:</strong> ${filho.idade} anos</p>
-                  <p><strong>Status:</strong> ${filhoPagante ? 'Pagante' : 'Não Pagante'}</p>
-                  <p><strong>Modalidades:</strong> ${filho.modalidades.length > 0 ? filho.modalidades.join(', ') : 'Nenhuma'}</p>
-                </div>
-              `;
-              if (filhoPagante) { totalPagantes++; nomesPagantes.push(filho.nome); }
-              else { totalNaoPagantes++; nomesNaoPagantes.push(filho.nome); }
-              if (Array.isArray(filho.modalidades)) {
-                filho.modalidades.forEach(function(mod) {
-                  if (!pessoasPorModalidade[mod]) pessoasPorModalidade[mod] = [];
-                  pessoasPorModalidade[mod].push({ nome: filho.nome, pagante: filhoPagante });
-                });
-              }
-            });
-          }
-          
-item.innerHTML = `
-  <h3>Inscrição #${inscricao.id}</h3>
-  ${pessoasHTML}
-
-  <div class="endereco-info">
-    <p><strong>Endereço:</strong> ${inscricao.endereco.rua}, ${inscricao.endereco.numero} - ${inscricao.endereco.bairro}</p>
-  </div>
-
-  <div class="data-info">
-    <p>Cadastrado em: ${inscricao.data}</p>
-  </div>
-
-  <button class="btn-small btn-excluir" data-id="${inscricao.id}">
-    Excluir inscrição
-  </button>
-`;
-
-          
-        
-
-          listaInscricoes.appendChild(item);
-
-item.querySelector('.btn-excluir')
-  .addEventListener('click', function () {
-    excluirInscricao(inscricao.id);
-  });
-
-        });
-      }
-
-      // Atualizar estatísticas
-      document.getElementById('totalPagantes').textContent = totalPagantes;
-      document.getElementById('totalNaoPagantes').textContent = totalNaoPagantes;
-      document.getElementById('totalInscricoes').textContent = inscricoes.length;
-      
-      // Renderizar listas organizadas
-      if (listaPagantesOrganizada) {
-        listaPagantesOrganizada.innerHTML = '';
-        if (nomesPagantes.length === 0) {
-          const li = document.createElement('li');
-          li.style.color = '#fff';
-          li.textContent = 'Nenhum pagante cadastrado.';
-          listaPagantesOrganizada.appendChild(li);
-        } else {
-          nomesPagantes.forEach(function(nome) {
-            const li = document.createElement('li');
-            li.textContent = nome;
-            listaPagantesOrganizada.appendChild(li);
-          });
-        }
-      }
-      
-      if (listaNaoPagantesOrganizada) {
-        listaNaoPagantesOrganizada.innerHTML = '';
-        if (nomesNaoPagantes.length === 0) {
-          const li = document.createElement('li');
-          li.style.color = '#fff';
-          li.textContent = 'Nenhum não pagante cadastrado.';
-          listaNaoPagantesOrganizada.appendChild(li);
-        } else {
-          nomesNaoPagantes.forEach(function(nome) {
-            const li = document.createElement('li');
-            li.textContent = nome;
-            listaNaoPagantesOrganizada.appendChild(li);
-          });
-        }
-      }
-      
-      if (listasPorModalidade) {
-        listasPorModalidade.innerHTML = '';
-        
-        MODALIDADES.forEach(function(modalidade) {
-          const bloco = document.createElement('div');
-          bloco.style.marginTop = '12px';
-          
-          const titulo = document.createElement('h3');
-          titulo.style.color = '#fff';
-          titulo.style.margin = '10px 0';
-          titulo.textContent = 'Modalidade: ' + modalidade;
-          
-          const ol = document.createElement('ol');
-          const itens = pessoasPorModalidade[modalidade] || [];
-          
-          if (itens.length === 0) {
-            const li = document.createElement('li');
-            li.style.color = '#fff';
-            li.textContent = 'Nenhum inscrito nesta modalidade.';
-            ol.appendChild(li);
-          } else {
-            itens.forEach(function(p) {
-              const li = document.createElement('li');
-              li.textContent = p.nome + ' – ' + (p.pagante ? 'Pagante' : 'Não Pagante');
-              ol.appendChild(li);
-            });
-          }
-          
-          bloco.appendChild(titulo);
-          bloco.appendChild(ol);
-          listasPorModalidade.appendChild(bloco);
-        });
-      }
-    }
-
-    // Adicionar link de acesso admin ao formulário
-function adicionarLinkAdmin() {
-  const form = document.getElementById('formInscricao');
-
-  if (form && !document.getElementById('linkAdmin')) {
-    const adminLink = document.createElement('a');
-    adminLink.id = 'linkAdmin';
-    adminLink.href = '#';
-    adminLink.textContent = 'Acesso Admin';
-    adminLink.style.cssText = `
-      display: block;
-      text-align: center;
-      margin-top: 20px;
-      color: rgba(255,255,255,0.7);
-      text-decoration: none;
-      font-size: 0.85rem;
-    `;
-
-    adminLink.addEventListener('click', function(e) {
-      e.preventDefault();
-      mostrarLogin();
+    inscricao.filhos.push({
+      nome: filhoDiv.querySelector('.filho-nome').value,
+      idade: idadeFilho,
+      modalidades: obterModalidadesSelecionadasFilho(filhoDiv),
+      tipo: 'filho',
+      pagante: paganteFilho
     });
+  });
 
-    form.appendChild(adminLink);
+  var pessoas = obterPessoasDaInscricao(inscricao);
+  var totalPagar = pessoas.filter(function(p) { return p.pagante; }).length * VALOR_POR_PAGANTE;
+
+  db.collection("inscricoes").add(inscricao)
+    .then(function() {
+      mostrarPopupSucesso(totalPagar, PIX_INFO);
+      form.reset();
+      var respMod = document.getElementById('respModalidadesContainer');
+      if (respMod) respMod.classList.add('hidden');
+      if (document.getElementById('conjugeArea')) document.getElementById('conjugeArea').classList.add('hidden');
+      if (document.getElementById('filhosArea')) document.getElementById('filhosArea').classList.add('hidden');
+      if (document.getElementById('listaFilhos')) document.getElementById('listaFilhos').innerHTML = '';
+    })
+    .catch(function() {
+      mostrarMensagem('Erro ao salvar inscrição.', 'erro');
+    });
+}
+
+/* ===============================
+   LOGIN ADMIN
+=============================== */
+function inicializarLoginAdmin() {
+  var formLogin = document.getElementById('formLoginAdmin');
+  var btnSair = document.getElementById('btnSairAdmin');
+  if (formLogin) {
+    formLogin.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var senha = document.getElementById('adminSenha').value;
+      if (senha === ADMIN_SENHA) {
+        mostrarDashboard();
+      } else {
+        mostrarMensagem('Senha incorreta!', 'erro');
+      }
+    });
+  }
+  if (btnSair) {
+    btnSair.addEventListener('click', function() {
+      mostrarFormulario();
+      adicionarLinkAdmin();
+    });
   }
 }
 
-
-    /* ===============================
-   PDF – RELATÓRIO DASHBOARD
+/* ===============================
+   LINK ACESSO ADMIN (único, no final do formulário)
 =============================== */
+function adicionarLinkAdmin() {
+  var form = document.getElementById('formInscricao');
+  if (!form) return;
+  if (document.getElementById('linkAdmin')) return;
 
-function salvarDashboardPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  const inscricoes = db.collection("inscricoes").get().then(snapshot => {
-  snapshot.forEach(doc => {
-    const inscricao = { id: doc.id, ...doc.data() };
+  var adminLink = document.createElement('a');
+  adminLink.id = 'linkAdmin';
+  adminLink.href = '#';
+  adminLink.textContent = 'Acesso Admin';
+  adminLink.style.cssText = 'display:block;text-align:center;margin-top:20px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:0.85rem;';
+  adminLink.addEventListener('click', function(e) {
+    e.preventDefault();
+    mostrarLogin();
   });
-});
-  let y = 15;
+  form.appendChild(adminLink);
+}
 
-  /* TÍTULO */
+/* ===============================
+   DASHBOARD: buscar dados (Firestore)
+=============================== */
+function atualizarDashboard() {
+  db.collection("inscricoes").get()
+    .then(function(snapshot) {
+      var inscricoes = [];
+      snapshot.forEach(function(doc) {
+        inscricoes.push({ id: doc.id, ...doc.data() });
+      });
+      renderizarDashboard(inscricoes);
+    })
+    .catch(function() {
+      renderizarDashboard([]);
+    });
+}
+
+/* ===============================
+   DASHBOARD: renderizar (apenas UI)
+=============================== */
+function renderizarDashboard(inscricoes) {
+  var listaInscricoes = document.getElementById('listaInscricoes');
+  var listaPagantesOrganizada = document.getElementById('listaPagantesOrganizada');
+  var listaNaoPagantesOrganizada = document.getElementById('listaNaoPagantesOrganizada');
+  var listasPorModalidade = document.getElementById('listasPorModalidade');
+
+  var totalPagantes = 0;
+  var totalNaoPagantes = 0;
+  var nomesPagantes = [];
+  var nomesNaoPagantes = [];
+  var pessoasPorModalidade = {};
+  MODALIDADES.forEach(function(m) { pessoasPorModalidade[m] = []; });
+
+  if (listaInscricoes) listaInscricoes.innerHTML = '';
+  if (listaPagantesOrganizada) listaPagantesOrganizada.innerHTML = '';
+  if (listaNaoPagantesOrganizada) listaNaoPagantesOrganizada.innerHTML = '';
+  if (listasPorModalidade) listasPorModalidade.innerHTML = '';
+
+  inscricoes.forEach(function(inscricao) {
+    var pessoas = obterPessoasDaInscricao(inscricao);
+    pessoas.forEach(function(p) {
+      var nomeExibicao = p.nome + (p.idade === IDADE_MENOR_1_ANO ? ' (Menor de 1 ano)' : '');
+      if (p.pagante) {
+        totalPagantes++;
+        nomesPagantes.push(nomeExibicao);
+      } else {
+        totalNaoPagantes++;
+        nomesNaoPagantes.push(nomeExibicao);
+      }
+      if (Array.isArray(p.modalidades)) {
+        p.modalidades.forEach(function(mod) {
+          if (pessoasPorModalidade[mod]) {
+            pessoasPorModalidade[mod].push({ nome: nomeExibicao, pagante: p.pagante });
+          }
+        });
+      }
+    });
+  });
+
+  if (inscricoes.length === 0) {
+    if (listaInscricoes) {
+      listaInscricoes.innerHTML = '<p style="color:#fff;">Nenhuma inscrição cadastrada ainda.</p>';
+    }
+    document.getElementById('totalPagantes').textContent = '0';
+    document.getElementById('totalNaoPagantes').textContent = '0';
+    document.getElementById('totalInscricoes').textContent = '0';
+    if (listaPagantesOrganizada) {
+      var li = document.createElement('li');
+      li.style.color = '#fff';
+      li.textContent = 'Nenhum pagante cadastrado.';
+      listaPagantesOrganizada.appendChild(li);
+    }
+    if (listaNaoPagantesOrganizada) {
+      var li2 = document.createElement('li');
+      li2.style.color = '#fff';
+      li2.textContent = 'Nenhum não pagante cadastrado.';
+      listaNaoPagantesOrganizada.appendChild(li2);
+    }
+    if (listasPorModalidade) {
+      MODALIDADES.forEach(function(modalidade) {
+        var bloco = document.createElement('div');
+        bloco.style.marginTop = '12px';
+        var titulo = document.createElement('h3');
+        titulo.style.color = '#fff';
+        titulo.style.margin = '10px 0';
+        titulo.textContent = 'Modalidade: ' + modalidade;
+        var ol = document.createElement('ol');
+        var li3 = document.createElement('li');
+        li3.style.color = '#fff';
+        li3.textContent = 'Nenhum inscrito nesta modalidade.';
+        ol.appendChild(li3);
+        bloco.appendChild(titulo);
+        bloco.appendChild(ol);
+        listasPorModalidade.appendChild(bloco);
+      });
+    }
+    return;
+  }
+
+  inscricoes.forEach(function(inscricao, index) {
+    var pessoasHTML = '';
+    var r = inscricao.responsavel;
+    if (r) {
+      pessoasHTML += '<p><strong>Responsável:</strong> ' + (r.nome || '') + ' (' + (r.idade || '') + ' anos) – ' + (r.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+      if (r.modalidades && r.modalidades.length > 0) {
+        pessoasHTML += '<p><strong>Modalidades:</strong> ' + r.modalidades.join(', ') + '</p>';
+      }
+    }
+    if (inscricao.conjuge) {
+      var c = inscricao.conjuge;
+      pessoasHTML += '<p><strong>Cônjuge:</strong> ' + (c.nome || '') + ' (' + (c.idade || '') + ' anos) – ' + (c.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+      if (c.modalidades && c.modalidades.length > 0) {
+        pessoasHTML += '<p><strong>Modalidades:</strong> ' + c.modalidades.join(', ') + '</p>';
+      }
+    }
+    if (inscricao.filhos && inscricao.filhos.length > 0) {
+      inscricao.filhos.forEach(function(filho) {
+        var idadeTexto = filho.idade === IDADE_MENOR_1_ANO ? IDADE_MENOR_1_ANO : (filho.idade || '') + ' anos';
+        pessoasHTML += '<p><strong>Filho:</strong> ' + (filho.nome || '') + ' – Idade: ' + idadeTexto + ' – ' + (filho.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+        if (filho.modalidades && filho.modalidades.length > 0) {
+          pessoasHTML += '<p><strong>Modalidades:</strong> ' + filho.modalidades.join(', ') + '</p>';
+        }
+      });
+    }
+    if (inscricao.endereco) {
+      pessoasHTML += '<p><strong>Endereço:</strong> ' + (inscricao.endereco.rua || '') + ', ' + (inscricao.endereco.numero || '') + ' – ' + (inscricao.endereco.bairro || '') + '</p>';
+    }
+    pessoasHTML += '<p><strong>Data:</strong> ' + (inscricao.data || '') + '</p>';
+
+    var item = document.createElement('div');
+    item.className = 'inscricao-item';
+    item.innerHTML = '<h3>Inscrição #' + (inscricao.id || (index + 1)) + '</h3>' + pessoasHTML +
+      '<button class="btn-small btn-excluir">Excluir inscrição</button>';
+    listaInscricoes.appendChild(item);
+
+    var btnExcluir = item.querySelector('.btn-excluir');
+    if (btnExcluir) {
+      btnExcluir.addEventListener('click', function() {
+        excluirInscricao(inscricao.id);
+      });
+    }
+  });
+
+  var totalInscritosEl = document.getElementById('totalInscricoes');
+  var totalPagantesEl = document.getElementById('totalPagantes');
+  var totalNaoPagantesEl = document.getElementById('totalNaoPagantes');
+  if (totalInscritosEl) totalInscritosEl.textContent = inscricoes.length;
+  if (totalPagantesEl) totalPagantesEl.textContent = totalPagantes;
+  if (totalNaoPagantesEl) totalNaoPagantesEl.textContent = totalNaoPagantes;
+
+  if (listaPagantesOrganizada) {
+    if (nomesPagantes.length === 0) {
+      var li = document.createElement('li');
+      li.style.color = '#fff';
+      li.textContent = 'Nenhum pagante cadastrado.';
+      listaPagantesOrganizada.appendChild(li);
+    } else {
+      nomesPagantes.forEach(function(nome) {
+        var li = document.createElement('li');
+        li.textContent = nome;
+        listaPagantesOrganizada.appendChild(li);
+      });
+    }
+  }
+
+  if (listaNaoPagantesOrganizada) {
+    if (nomesNaoPagantes.length === 0) {
+      var li = document.createElement('li');
+      li.style.color = '#fff';
+      li.textContent = 'Nenhum não pagante cadastrado.';
+      listaNaoPagantesOrganizada.appendChild(li);
+    } else {
+      nomesNaoPagantes.forEach(function(nome) {
+        var li = document.createElement('li');
+        li.textContent = nome;
+        listaNaoPagantesOrganizada.appendChild(li);
+      });
+    }
+  }
+
+  if (listasPorModalidade) {
+    MODALIDADES.forEach(function(modalidade) {
+      var bloco = document.createElement('div');
+      bloco.style.marginTop = '12px';
+      var titulo = document.createElement('h3');
+      titulo.style.color = '#fff';
+      titulo.style.margin = '10px 0';
+      titulo.textContent = 'Modalidade: ' + modalidade;
+      var ol = document.createElement('ol');
+      var itens = pessoasPorModalidade[modalidade] || [];
+      if (itens.length === 0) {
+        var li = document.createElement('li');
+        li.style.color = '#fff';
+        li.textContent = 'Nenhum inscrito nesta modalidade.';
+        ol.appendChild(li);
+      } else {
+        itens.forEach(function(p) {
+          var li = document.createElement('li');
+          li.textContent = (p.nome || '') + ' – ' + (p.pagante ? 'Pagante' : 'Não Pagante');
+          ol.appendChild(li);
+        });
+      }
+      bloco.appendChild(titulo);
+      bloco.appendChild(ol);
+      listasPorModalidade.appendChild(bloco);
+    });
+  }
+}
+
+/* ===============================
+   EXCLUIR INSCRIÇÃO (Firestore)
+=============================== */
+function excluirInscricao(id) {
+  if (!id) return;
+  mostrarConfirmacaoExclusao(id, function() {
+    db.collection("inscricoes").doc(id).delete()
+      .then(function() {
+        atualizarDashboard();
+      })
+      .catch(function() {
+        mostrarMensagem('Erro ao excluir inscrição.', 'erro');
+      });
+  });
+}
+
+/* ===============================
+   PDF (busca Firestore, depois gera PDF)
+=============================== */
+function salvarDashboardPDF() {
+  db.collection("inscricoes").get()
+    .then(function(snapshot) {
+      var inscricoes = [];
+      snapshot.forEach(function(doc) {
+        inscricoes.push({ id: doc.id, ...doc.data() });
+      });
+      gerarPDFComInscricoes(inscricoes);
+    })
+    .catch(function() {
+      gerarPDFComInscricoes([]);
+    });
+}
+
+function gerarPDFComInscricoes(inscricoes) {
+  var jsPDF = window.jspdf;
+  if (!jsPDF || !jsPDF.jsPDF) return;
+  var doc = new jsPDF.jsPDF();
+  var y = 15;
+
   doc.setFontSize(16);
   doc.text('Relatório de Inscrições – AVEPIB', 10, y);
   y += 12;
@@ -608,225 +681,140 @@ function salvarDashboardPDF() {
     return;
   }
 
-  /* ===============================
-     1) DETALHAMENTO DAS INSCRIÇÕES
-  =============================== */
-  inscricoes.forEach((inscricao, index) => {
+  inscricoes.forEach(function(inscricao, index) {
     doc.setFontSize(14);
-    doc.text(`Inscrição #${index + 1}`, 10, y);
+    doc.text('Inscrição #' + (index + 1), 10, y);
     y += 8;
-
     doc.setFontSize(11);
 
-    // Responsável
-    doc.text(
-      `Responsável: ${inscricao.responsavel.nome} (${inscricao.responsavel.idade} anos) – ${inscricao.responsavel.pagante ? 'Pagante' : 'Não Pagante'}`,
-      10,
-      y
-    );
-    y += 6;
-
-    if (inscricao.responsavel.modalidades.length > 0) {
-      doc.text(
-        `Modalidades: ${inscricao.responsavel.modalidades.join(', ')}`,
-        12,
-        y
-      );
+    var r = inscricao.responsavel;
+    if (r) {
+      doc.text('Responsável: ' + (r.nome || '') + ' (' + (r.idade || '') + ' anos) – ' + (r.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
       y += 6;
-    }
-
-    // Cônjuge
-    if (inscricao.conjuge) {
-      doc.text(
-        `Cônjuge: ${inscricao.conjuge.nome} (${inscricao.conjuge.idade} anos) – ${inscricao.conjuge.pagante ? 'Pagante' : 'Não Pagante'}`,
-        10,
-        y
-      );
-      y += 6;
-
-      if (inscricao.conjuge.modalidades.length > 0) {
-        doc.text(
-          `Modalidades: ${inscricao.conjuge.modalidades.join(', ')}`,
-          12,
-          y
-        );
+      if (r.modalidades && r.modalidades.length > 0) {
+        doc.text('Modalidades: ' + r.modalidades.join(', '), 12, y);
         y += 6;
       }
     }
-
-    // Filhos
-    if (inscricao.filhos.length > 0) {
-      inscricao.filhos.forEach(filho => {
-        doc.text(
-          `Filho: ${filho.nome} (${filho.idade} anos) – ${filho.pagante ? 'Pagante' : 'Não Pagante'}`,
-          10,
-          y
-        );
+    if (inscricao.conjuge) {
+      var c = inscricao.conjuge;
+      doc.text('Cônjuge: ' + (c.nome || '') + ' (' + (c.idade || '') + ' anos) – ' + (c.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
+      y += 6;
+      if (c.modalidades && c.modalidades.length > 0) {
+        doc.text('Modalidades: ' + c.modalidades.join(', '), 12, y);
         y += 6;
-
-        if (filho.modalidades.length > 0) {
-          doc.text(
-            `Modalidades: ${filho.modalidades.join(', ')}`,
-            12,
-            y
-          );
+      }
+    }
+    if (inscricao.filhos && inscricao.filhos.length > 0) {
+      inscricao.filhos.forEach(function(filho) {
+        var idadeTexto = filho.idade === IDADE_MENOR_1_ANO ? IDADE_MENOR_1_ANO : (filho.idade || '') + ' anos';
+        doc.text('Filho: ' + (filho.nome || '') + ' – Idade: ' + idadeTexto + ' – ' + (filho.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
+        y += 6;
+        if (filho.modalidades && filho.modalidades.length > 0) {
+          doc.text('Modalidades: ' + filho.modalidades.join(', '), 12, y);
           y += 6;
         }
       });
     }
-
-    // Endereço
-    doc.text(
-      `Endereço: ${inscricao.endereco.rua}, ${inscricao.endereco.numero} – ${inscricao.endereco.bairro}`,
-      10,
-      y
-    );
-    y += 6;
-
-    // Data
-    doc.text(`Data da inscrição: ${inscricao.data}`, 10, y);
+    if (inscricao.endereco) {
+      doc.text('Endereço: ' + (inscricao.endereco.rua || '') + ', ' + (inscricao.endereco.numero || '') + ' – ' + (inscricao.endereco.bairro || ''), 10, y);
+      y += 6;
+    }
+    doc.text('Data da inscrição: ' + (inscricao.data || ''), 10, y);
     y += 10;
-
     if (y > 270) {
       doc.addPage();
       y = 15;
     }
   });
 
-  /* ===============================
-     2) RESUMO GERAL (IGUAL DASHBOARD)
-  =============================== */
   doc.addPage();
   y = 15;
-
   doc.setFontSize(16);
   doc.text('Resumo Geral', 10, y);
   y += 12;
 
-  const nomesPagantes = [];
-  const nomesNaoPagantes = [];
-  const pessoasPorModalidade = {};
-  MODALIDADES.forEach(m => pessoasPorModalidade[m] = []);
-
-  inscricoes.forEach(inscricao => {
-    const pessoas = obterPessoasDaInscricao(inscricao);
-    pessoas.forEach(pessoa => {
-      pessoa.pagante
-        ? nomesPagantes.push(pessoa.nome)
-        : nomesNaoPagantes.push(pessoa.nome);
-
-      if (Array.isArray(pessoa.modalidades)) {
-        pessoa.modalidades.forEach(mod => {
-          pessoasPorModalidade[mod].push({
-            nome: pessoa.nome,
-            pagante: pessoa.pagante
-          });
+  var nomesPagantes = [];
+  var nomesNaoPagantes = [];
+  var pessoasPorModalidade = {};
+  MODALIDADES.forEach(function(m) { pessoasPorModalidade[m] = []; });
+  inscricoes.forEach(function(inscricao) {
+    var pessoas = obterPessoasDaInscricao(inscricao);
+    pessoas.forEach(function(p) {
+      if (p.pagante) nomesPagantes.push(p.nome);
+      else nomesNaoPagantes.push(p.nome);
+      if (Array.isArray(p.modalidades)) {
+        p.modalidades.forEach(function(mod) {
+          if (pessoasPorModalidade[mod]) {
+            pessoasPorModalidade[mod].push({ nome: p.nome, pagante: p.pagante });
+          }
         });
       }
     });
   });
 
-  /* Pagantes */
   doc.setFontSize(14);
   doc.text('Lista numerada de Pagantes', 10, y);
   y += 8;
   doc.setFontSize(11);
-
   if (nomesPagantes.length === 0) {
     doc.text('Nenhum pagante cadastrado.', 10, y);
   } else {
-    nomesPagantes.forEach((nome, i) => {
-      doc.text(`${i + 1}. ${nome}`, 10, y);
+    nomesPagantes.forEach(function(nome, i) {
+      doc.text((i + 1) + '. ' + nome, 10, y);
       y += 6;
       if (y > 270) { doc.addPage(); y = 15; }
     });
   }
-
   y += 10;
-
-  /* Não pagantes */
   doc.setFontSize(14);
   doc.text('Lista numerada de Não Pagantes', 10, y);
   y += 8;
   doc.setFontSize(11);
-
   if (nomesNaoPagantes.length === 0) {
     doc.text('Nenhum não pagante cadastrado.', 10, y);
   } else {
-    nomesNaoPagantes.forEach((nome, i) => {
-      doc.text(`${i + 1}. ${nome}`, 10, y);
+    nomesNaoPagantes.forEach(function(nome, i) {
+      doc.text((i + 1) + '. ' + nome, 10, y);
       y += 6;
       if (y > 270) { doc.addPage(); y = 15; }
     });
   }
-
   y += 10;
-
-  /* Modalidades */
   doc.setFontSize(14);
   doc.text('Listas por Modalidade', 10, y);
   y += 8;
-
-  MODALIDADES.forEach(modalidade => {
+  MODALIDADES.forEach(function(modalidade) {
     doc.setFontSize(12);
-    doc.text(`Modalidade: ${modalidade}`, 10, y);
+    doc.text('Modalidade: ' + modalidade, 10, y);
     y += 6;
-
     doc.setFontSize(11);
-    const lista = pessoasPorModalidade[modalidade];
-
+    var lista = pessoasPorModalidade[modalidade] || [];
     if (lista.length === 0) {
       doc.text('Nenhum inscrito nesta modalidade.', 12, y);
       y += 6;
     } else {
-      lista.forEach(pessoa => {
-        doc.text(
-          `${pessoa.nome} – ${pessoa.pagante ? 'Pagante' : 'Não Pagante'}`,
-          12,
-          y
-        );
+      lista.forEach(function(p) {
+        doc.text((p.nome || '') + ' – ' + (p.pagante ? 'Pagante' : 'Não Pagante'), 12, y);
         y += 6;
         if (y > 270) { doc.addPage(); y = 15; }
       });
     }
-
     y += 8;
     if (y > 270) { doc.addPage(); y = 15; }
   });
 
-  /* SALVAR */
   doc.save('relatorio-inscricoes-avepib.pdf');
 }
 
-/* ===============================
-   BOTÃO PDF NO DASHBOARD
-=============================== */
 function adicionarBotaoPDF() {
-  const adminHeader = document.querySelector('#adminDashboard .admin-header');
+  var adminHeader = document.querySelector('#adminDashboard .admin-header');
   if (!adminHeader || document.getElementById('btnSalvarPDF')) return;
-
-  const btn = document.createElement('button');
+  var btn = document.createElement('button');
   btn.id = 'btnSalvarPDF';
   btn.textContent = 'Salvar PDF';
   btn.className = 'btn-small';
   btn.style.marginLeft = '10px';
-
   btn.addEventListener('click', salvarDashboardPDF);
   adminHeader.appendChild(btn);
-}
-function excluirInscricao(id) {
-  if (!confirm('Tem certeza que deseja excluir esta inscrição?')) return;
-
-  let inscricoes = db.collection("inscricoes").get().then(snapshot => {
-  snapshot.forEach(doc => {
-    const inscricao = { id: doc.id, ...doc.data() };
-  });
-});
-
-  inscricoes = inscricoes.filter(inscricao => inscricao.id !== id);
-
-db.collection("inscricoes").doc(id).delete();
-
-
-  atualizarDashboard();
 }
