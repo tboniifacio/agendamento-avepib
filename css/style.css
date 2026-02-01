@@ -105,9 +105,9 @@ button:hover, .btn-small:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }
-
-@media (max-width: 640px) {
 .hidden { display: none !important; }
+@media (max-width: 640px) {
+
   /* Modalidades: 1 coluna */
   .modalidades {
     display: flex;
