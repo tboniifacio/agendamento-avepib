@@ -66,13 +66,14 @@ function mostrarPopupSucesso(totalPagar, infoPix) {
   document.body.appendChild(overlay);
 }
 
-function mostrarConfirmacaoExclusao(id, callback) {
+function mostrarConfirmacaoExclusao(id, callback, mensagem) {
+  var texto = (mensagem && mensagem.length) ? mensagem : 'Tem certeza que deseja excluir esta inscrição?';
   var overlay = document.createElement('div');
   overlay.id = 'popupConfirmOverlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
   var box = document.createElement('div');
   box.style.cssText = 'background:#fff;color:#111;padding:24px 28px;border-radius:12px;max-width:360px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.3);';
-  box.innerHTML = '<p style="margin:0 0 20px 0;">Tem certeza que deseja excluir esta inscrição?</p>' +
+  box.innerHTML = '<p style="margin:0 0 20px 0;">' + texto + '</p>' +
     '<div style="display:flex;gap:12px;justify-content:center;">' +
     '<button type="button" id="btnConfirmarExcluirSim" class="btn-small">Sim</button>' +
     '<button type="button" id="btnConfirmarExcluirNao" class="btn-small">Não</button>' +
@@ -460,6 +461,12 @@ function renderizarDashboard(inscricoes) {
   if (listaNaoPagantesOrganizada) listaNaoPagantesOrganizada.innerHTML = '';
   if (listasPorModalidade) listasPorModalidade.innerHTML = '';
 
+  var glass = document.querySelector('#adminDashboard .glass');
+  if (glass && listaInscricoes && listaInscricoes.closest) {
+    var sec = listaInscricoes.closest('.lista-inscricoes');
+    if (sec) glass.appendChild(sec);
+  }
+
   inscricoes.forEach(function(inscricao) {
     var pessoas = obterPessoasDaInscricao(inscricao);
     pessoas.forEach(function(p) {
@@ -522,25 +529,26 @@ function renderizarDashboard(inscricoes) {
   }
 
   inscricoes.forEach(function(inscricao, index) {
+    var inscricaoId = inscricao.id || '';
     var pessoasHTML = '';
     var r = inscricao.responsavel;
     if (r) {
-      pessoasHTML += '<p><strong>Responsável:</strong> ' + (r.nome || '') + ' (' + (r.idade || '') + ' anos) – ' + (r.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+      pessoasHTML += '<p><strong>Responsável:</strong> ' + (r.nome || '') + ' (' + (r.idade || '') + ' anos) – ' + (r.pagante ? 'Pagante' : 'Não Pagante') + ' <button type="button" class="btn-small btn-excluir-pessoa" data-inscricao-id="' + inscricaoId + '" data-tipo="responsavel">Excluir</button></p>';
       if (r.modalidades && r.modalidades.length > 0) {
         pessoasHTML += '<p><strong>Modalidades:</strong> ' + r.modalidades.join(', ') + '</p>';
       }
     }
     if (inscricao.conjuge) {
       var c = inscricao.conjuge;
-      pessoasHTML += '<p><strong>Cônjuge:</strong> ' + (c.nome || '') + ' (' + (c.idade || '') + ' anos) – ' + (c.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+      pessoasHTML += '<p><strong>Cônjuge:</strong> ' + (c.nome || '') + ' (' + (c.idade || '') + ' anos) – ' + (c.pagante ? 'Pagante' : 'Não Pagante') + ' <button type="button" class="btn-small btn-excluir-pessoa" data-inscricao-id="' + inscricaoId + '" data-tipo="conjuge">Excluir</button></p>';
       if (c.modalidades && c.modalidades.length > 0) {
         pessoasHTML += '<p><strong>Modalidades:</strong> ' + c.modalidades.join(', ') + '</p>';
       }
     }
     if (inscricao.filhos && inscricao.filhos.length > 0) {
-      inscricao.filhos.forEach(function(filho) {
+      inscricao.filhos.forEach(function(filho, idx) {
         var idadeTexto = filho.idade === IDADE_MENOR_1_ANO ? IDADE_MENOR_1_ANO : (filho.idade || '') + ' anos';
-        pessoasHTML += '<p><strong>Filho:</strong> ' + (filho.nome || '') + ' – Idade: ' + idadeTexto + ' – ' + (filho.pagante ? 'Pagante' : 'Não Pagante') + '</p>';
+        pessoasHTML += '<p><strong>Filho:</strong> ' + (filho.nome || '') + ' – Idade: ' + idadeTexto + ' – ' + (filho.pagante ? 'Pagante' : 'Não Pagante') + ' <button type="button" class="btn-small btn-excluir-pessoa" data-inscricao-id="' + inscricaoId + '" data-tipo="filho" data-indice-filho="' + idx + '">Excluir</button></p>';
         if (filho.modalidades && filho.modalidades.length > 0) {
           pessoasHTML += '<p><strong>Modalidades:</strong> ' + filho.modalidades.join(', ') + '</p>';
         }
@@ -553,16 +561,18 @@ function renderizarDashboard(inscricoes) {
 
     var item = document.createElement('div');
     item.className = 'inscricao-item';
-    item.innerHTML = '<h3>Inscrição #' + (inscricao.id || (index + 1)) + '</h3>' + pessoasHTML +
-      '<button class="btn-small btn-excluir">Excluir inscrição</button>';
+    item.innerHTML = '<h3>Inscrição #' + (inscricao.id || (index + 1)) + '</h3>' + pessoasHTML;
     listaInscricoes.appendChild(item);
 
-    var btnExcluir = item.querySelector('.btn-excluir');
-    if (btnExcluir) {
-      btnExcluir.addEventListener('click', function() {
-        excluirInscricao(inscricao.id);
+    item.querySelectorAll('.btn-excluir-pessoa').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = btn.getAttribute('data-inscricao-id');
+        var tipo = btn.getAttribute('data-tipo');
+        var indiceFilho = btn.getAttribute('data-indice-filho');
+        var idxFilho = indiceFilho !== null && indiceFilho !== '' ? parseInt(indiceFilho, 10) : undefined;
+        excluirPessoa(id, tipo, idxFilho);
       });
-    }
+    });
   });
 
   var totalInscritosEl = document.getElementById('totalInscricoes');
@@ -632,19 +642,76 @@ function renderizarDashboard(inscricoes) {
 }
 
 /* ===============================
-   EXCLUIR INSCRIÇÃO (Firestore)
+   EXCLUIR POR PESSOA (Firestore)
 =============================== */
-function excluirInscricao(id) {
-  if (!id) return;
-  mostrarConfirmacaoExclusao(id, function() {
-    db.collection("inscricoes").doc(id).delete()
-      .then(function() {
-        atualizarDashboard();
-      })
-      .catch(function() {
-        mostrarMensagem('Erro ao excluir inscrição.', 'erro');
-      });
+function filhoMaisVelho(filhos) {
+  if (!filhos || filhos.length === 0) return null;
+  var ordenado = filhos.slice().sort(function(a, b) {
+    if (a.idade === IDADE_MENOR_1_ANO && b.idade === IDADE_MENOR_1_ANO) return 0;
+    if (a.idade === IDADE_MENOR_1_ANO) return 1;
+    if (b.idade === IDADE_MENOR_1_ANO) return -1;
+    return (b.idade | 0) - (a.idade | 0);
   });
+  return ordenado[0];
+}
+
+function excluirPessoa(inscricaoId, tipo, indiceFilho) {
+  if (!inscricaoId) return;
+  var msg = tipo === 'responsavel' || tipo === 'conjuge' || tipo === 'filho' ? 'Tem certeza que deseja excluir esta pessoa?' : 'Tem certeza que deseja excluir esta inscrição?';
+  mostrarConfirmacaoExclusao(inscricaoId, function() {
+    var ref = db.collection("inscricoes").doc(inscricaoId);
+    ref.get().then(function(docSnap) {
+      if (!docSnap.exists) {
+        mostrarMensagem('Inscrição não encontrada.', 'erro');
+        return;
+      }
+      var dados = docSnap.data();
+      var responsavel = dados.responsavel;
+      var conjuge = dados.conjuge || null;
+      var filhos = Array.isArray(dados.filhos) ? dados.filhos.slice() : [];
+      var endereco = dados.endereco || {};
+      var data = dados.data;
+
+      if (tipo === 'filho') {
+        if (indiceFilho >= 0 && indiceFilho < filhos.length) {
+          filhos.splice(indiceFilho, 1);
+          ref.update({ filhos: filhos }).then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+        }
+        return;
+      }
+
+      if (tipo === 'conjuge') {
+        ref.update({ conjuge: null }).then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+        return;
+      }
+
+      if (tipo === 'responsavel') {
+        var temConjuge = conjuge && typeof conjuge === 'object';
+        var temFilhos = filhos.length > 0;
+        if (!temConjuge && !temFilhos) {
+          ref.delete().then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+          return;
+        }
+        var novoResponsavel;
+        if (temConjuge) {
+          novoResponsavel = { nome: conjuge.nome, idade: conjuge.idade, modalidades: conjuge.modalidades || [], tipo: 'responsavel', pagante: conjuge.pagante };
+          ref.update({ responsavel: novoResponsavel, conjuge: null }).then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+        } else {
+          var maisVelho = filhoMaisVelho(filhos);
+          if (!maisVelho) {
+            ref.delete().then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+            return;
+          }
+          novoResponsavel = { nome: maisVelho.nome, idade: maisVelho.idade, modalidades: maisVelho.modalidades || [], tipo: 'responsavel', pagante: maisVelho.pagante };
+          var idx = filhos.indexOf(maisVelho);
+          if (idx !== -1) filhos.splice(idx, 1);
+          ref.update({ responsavel: novoResponsavel, filhos: filhos }).then(function() { atualizarDashboard(); }).catch(function() { mostrarMensagem('Erro ao excluir.', 'erro'); });
+        }
+      }
+    }).catch(function() {
+      mostrarMensagem('Erro ao excluir.', 'erro');
+    });
+  }, msg);
 }
 
 /* ===============================
@@ -671,82 +738,27 @@ function gerarPDFComInscricoes(inscricoes) {
   var y = 15;
 
   doc.setFontSize(16);
-  doc.text('Relatório de Inscrições – AVEPIB', 10, y);
-  y += 12;
-
-  if (inscricoes.length === 0) {
-    doc.setFontSize(11);
-    doc.text('Nenhuma inscrição cadastrada.', 10, y);
-    doc.save('relatorio-inscricoes-avepib.pdf');
-    return;
-  }
-
-  inscricoes.forEach(function(inscricao, index) {
-    doc.setFontSize(14);
-    doc.text('Inscrição #' + (index + 1), 10, y);
-    y += 8;
-    doc.setFontSize(11);
-
-    var r = inscricao.responsavel;
-    if (r) {
-      doc.text('Responsável: ' + (r.nome || '') + ' (' + (r.idade || '') + ' anos) – ' + (r.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
-      y += 6;
-      if (r.modalidades && r.modalidades.length > 0) {
-        doc.text('Modalidades: ' + r.modalidades.join(', '), 12, y);
-        y += 6;
-      }
-    }
-    if (inscricao.conjuge) {
-      var c = inscricao.conjuge;
-      doc.text('Cônjuge: ' + (c.nome || '') + ' (' + (c.idade || '') + ' anos) – ' + (c.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
-      y += 6;
-      if (c.modalidades && c.modalidades.length > 0) {
-        doc.text('Modalidades: ' + c.modalidades.join(', '), 12, y);
-        y += 6;
-      }
-    }
-    if (inscricao.filhos && inscricao.filhos.length > 0) {
-      inscricao.filhos.forEach(function(filho) {
-        var idadeTexto = filho.idade === IDADE_MENOR_1_ANO ? IDADE_MENOR_1_ANO : (filho.idade || '') + ' anos';
-        doc.text('Filho: ' + (filho.nome || '') + ' – Idade: ' + idadeTexto + ' – ' + (filho.pagante ? 'Pagante' : 'Não Pagante'), 10, y);
-        y += 6;
-        if (filho.modalidades && filho.modalidades.length > 0) {
-          doc.text('Modalidades: ' + filho.modalidades.join(', '), 12, y);
-          y += 6;
-        }
-      });
-    }
-    if (inscricao.endereco) {
-      doc.text('Endereço: ' + (inscricao.endereco.rua || '') + ', ' + (inscricao.endereco.numero || '') + ' – ' + (inscricao.endereco.bairro || ''), 10, y);
-      y += 6;
-    }
-    doc.text('Data da inscrição: ' + (inscricao.data || ''), 10, y);
-    y += 10;
-    if (y > 270) {
-      doc.addPage();
-      y = 15;
-    }
-  });
-
-  doc.addPage();
-  y = 15;
-  doc.setFontSize(16);
-  doc.text('Resumo Geral', 10, y);
+  doc.text('RELATÓRIO AVEPIB', 10, y);
   y += 12;
 
   var nomesPagantes = [];
   var nomesNaoPagantes = [];
   var pessoasPorModalidade = {};
   MODALIDADES.forEach(function(m) { pessoasPorModalidade[m] = []; });
+
   inscricoes.forEach(function(inscricao) {
     var pessoas = obterPessoasDaInscricao(inscricao);
     pessoas.forEach(function(p) {
-      if (p.pagante) nomesPagantes.push(p.nome);
-      else nomesNaoPagantes.push(p.nome);
+      var nomeExibicao = p.nome + (p.idade === IDADE_MENOR_1_ANO ? ' (Menor de 1 ano)' : '');
+      if (p.pagante) {
+        nomesPagantes.push(nomeExibicao);
+      } else {
+        nomesNaoPagantes.push(nomeExibicao);
+      }
       if (Array.isArray(p.modalidades)) {
         p.modalidades.forEach(function(mod) {
           if (pessoasPorModalidade[mod]) {
-            pessoasPorModalidade[mod].push({ nome: p.nome, pagante: p.pagante });
+            pessoasPorModalidade[mod].push({ nome: nomeExibicao, pagante: p.pagante });
           }
         });
       }
@@ -754,33 +766,37 @@ function gerarPDFComInscricoes(inscricoes) {
   });
 
   doc.setFontSize(14);
-  doc.text('Lista numerada de Pagantes', 10, y);
+  doc.text('Lista de Pagantes', 10, y);
   y += 8;
   doc.setFontSize(11);
   if (nomesPagantes.length === 0) {
     doc.text('Nenhum pagante cadastrado.', 10, y);
+    y += 6;
   } else {
     nomesPagantes.forEach(function(nome, i) {
-      doc.text((i + 1) + '. ' + nome, 10, y);
+      doc.text((i + 1) + '. ' + nome + ' – Pagante', 10, y);
       y += 6;
       if (y > 270) { doc.addPage(); y = 15; }
     });
   }
   y += 10;
+
   doc.setFontSize(14);
-  doc.text('Lista numerada de Não Pagantes', 10, y);
+  doc.text('Lista de Não Pagantes', 10, y);
   y += 8;
   doc.setFontSize(11);
   if (nomesNaoPagantes.length === 0) {
     doc.text('Nenhum não pagante cadastrado.', 10, y);
+    y += 6;
   } else {
     nomesNaoPagantes.forEach(function(nome, i) {
-      doc.text((i + 1) + '. ' + nome, 10, y);
+      doc.text((i + 1) + '. ' + nome + ' – Não Pagante', 10, y);
       y += 6;
       if (y > 270) { doc.addPage(); y = 15; }
     });
   }
   y += 10;
+
   doc.setFontSize(14);
   doc.text('Listas por Modalidade', 10, y);
   y += 8;
