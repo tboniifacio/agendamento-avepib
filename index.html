@@ -162,6 +162,31 @@
       </div>
     </div>
   </div>
+  <!-- Firebase App (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+
+<!-- Firestore (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAX9xjFmEm5IgrRrqXhq0QV1FHkdgUW-vY",
+    authDomain: "retiro-avepib.firebaseapp.com",
+    projectId: "retiro-avepib",
+    storageBucket: "retiro-avepib.firebasestorage.app",
+    messagingSenderId: "142151657161",
+    appId: "1:142151657161:web:08be67cbbeaec32cf28f18"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  // 🔥 ISSO É O QUE SEU JS VAI USAR
+  const db = firebase.firestore();
+</script>
+
+<!-- SEU JS -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/script.js"></script>
 </body>
 </html>

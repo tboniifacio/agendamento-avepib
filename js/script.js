@@ -1,3 +1,8 @@
+function mostrarFormulario() {
+  document.querySelector('.container').style.display = 'block';
+  document.getElementById('adminDashboard').classList.add('hidden');
+  document.getElementById('adminLogin').classList.add('hidden');
+}
 
     // Modalidades disponíveis
     const MODALIDADES = ["Futebol", "Peteca", "Maratona", "Truco", "Dominó", "Tiro ao alvo"];
@@ -14,33 +19,23 @@
     const VALOR_POR_PAGANTE = 150;
 
     // Verificar se é admin ao carregar
-    window.addEventListener('DOMContentLoaded', function() {
-      const isAdmin = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
-      if (isAdmin) {
-        mostrarDashboard();
-      } else {
-        mostrarFormulario();
-      }
-      
-      inicializarFormulario();
-      inicializarLoginAdmin();
-      adicionarLinkAdmin();
-    });
+window.addEventListener('DOMContentLoaded', function() {
+  mostrarFormulario(); // 👈 SEMPRE começa no formulário
+  inicializarFormulario();
+  inicializarLoginAdmin();
+  adicionarLinkAdmin();
+});
 
     // Função para mostrar formulário
-    function mostrarFormulario() {
-      document.querySelector('.container').style.display = 'block';
-      document.getElementById('adminDashboard').classList.add('hidden');
-      document.getElementById('adminLogin').classList.add('hidden');
-    }
+function mostrarDashboard() {
+  document.querySelector('.container').style.display = 'none';
+  document.getElementById('adminDashboard').classList.remove('hidden');
+  document.getElementById('adminLogin').classList.add('hidden');
 
-    // Função para mostrar dashboard
-    function mostrarDashboard() {
-      document.querySelector('.container').style.display = 'none';
-      document.getElementById('adminDashboard').classList.remove('hidden');
-      document.getElementById('adminLogin').classList.add('hidden');
-      atualizarDashboard();
-    }
+  atualizarDashboard();
+  adicionarBotaoPDF(); // 👈 CHAMADA OBRIGATÓRIA
+}
+
 
     // Função para mostrar login
     function mostrarLogin() {
@@ -293,9 +288,14 @@
       });
 
       // Salvar no localStorage
-      let inscricoes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      let inscricoes = db.collection("inscricoes").get().then(snapshot => {
+  snapshot.forEach(doc => {
+    const inscricao = { id: doc.id, ...doc.data() };
+  });
+});
       inscricoes.push(inscricao);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(inscricoes));
+    db.collection("inscricoes").add(inscricao);
+
 
       // Limpar formulário
       form.reset();
@@ -340,23 +340,26 @@
         e.preventDefault();
         const senha = document.getElementById('adminSenha').value;
         if (senha === ADMIN_SENHA) {
-          localStorage.setItem(ADMIN_AUTH_KEY, 'true');
           mostrarDashboard();
         } else {
           alert('Senha incorreta!');
         }
       });
 
-      btnSair.addEventListener('click', function() {
-        localStorage.removeItem(ADMIN_AUTH_KEY);
-        mostrarFormulario();
-        adicionarLinkAdmin();
-      });
+     btnSair.addEventListener('click', function() {
+  mostrarFormulario();
+  adicionarLinkAdmin();
+});
+
     }
 
     // Atualizar dashboard
     function atualizarDashboard() {
-      const inscricoes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const inscricoes = db.collection("inscricoes").get().then(snapshot => {
+  snapshot.forEach(doc => {
+    const inscricao = { id: doc.id, ...doc.data() };
+  });
+});
       const listaInscricoes = document.getElementById('listaInscricoes');
       const listaPagantesOrganizada = document.getElementById('listaPagantesOrganizada');
       const listaNaoPagantesOrganizada = document.getElementById('listaNaoPagantesOrganizada');
@@ -447,18 +450,33 @@
             });
           }
           
-          item.innerHTML = `
-            <h3>Inscrição #${inscricao.id}</h3>
-            ${pessoasHTML}
-            <div class="endereco-info">
-              <p><strong>Endereço:</strong> ${inscricao.endereco.rua}, ${inscricao.endereco.numero} - ${inscricao.endereco.bairro}</p>
-            </div>
-            <div class="data-info">
-              <p>Cadastrado em: ${inscricao.data}</p>
-            </div>
-          `;
+item.innerHTML = `
+  <h3>Inscrição #${inscricao.id}</h3>
+  ${pessoasHTML}
+
+  <div class="endereco-info">
+    <p><strong>Endereço:</strong> ${inscricao.endereco.rua}, ${inscricao.endereco.numero} - ${inscricao.endereco.bairro}</p>
+  </div>
+
+  <div class="data-info">
+    <p>Cadastrado em: ${inscricao.data}</p>
+  </div>
+
+  <button class="btn-small btn-excluir" data-id="${inscricao.id}">
+    Excluir inscrição
+  </button>
+`;
+
           
+        
+
           listaInscricoes.appendChild(item);
+
+item.querySelector('.btn-excluir')
+  .addEventListener('click', function () {
+    excluirInscricao(inscricao.id);
+  });
+
         });
       }
 
@@ -536,21 +554,279 @@
     }
 
     // Adicionar link de acesso admin ao formulário
-    function adicionarLinkAdmin() {
-      const form = document.getElementById('formInscricao');
-      const isAdmin = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
-      
-      if (form && !document.getElementById('linkAdmin') && !isAdmin) {
-        const adminLink = document.createElement('a');
-        adminLink.id = 'linkAdmin';
-        adminLink.href = '#';
-        adminLink.textContent = 'Acesso Admin';
-        adminLink.style.cssText = 'display: block; text-align: center; margin-top: 20px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.85rem;';
-        adminLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          mostrarLogin();
-        });
-        form.appendChild(adminLink);
+function adicionarLinkAdmin() {
+  const form = document.getElementById('formInscricao');
+
+  if (form && !document.getElementById('linkAdmin')) {
+    const adminLink = document.createElement('a');
+    adminLink.id = 'linkAdmin';
+    adminLink.href = '#';
+    adminLink.textContent = 'Acesso Admin';
+    adminLink.style.cssText = `
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.85rem;
+    `;
+
+    adminLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      mostrarLogin();
+    });
+
+    form.appendChild(adminLink);
+  }
+}
+
+
+    /* ===============================
+   PDF – RELATÓRIO DASHBOARD
+=============================== */
+
+function salvarDashboardPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const inscricoes = db.collection("inscricoes").get().then(snapshot => {
+  snapshot.forEach(doc => {
+    const inscricao = { id: doc.id, ...doc.data() };
+  });
+});
+  let y = 15;
+
+  /* TÍTULO */
+  doc.setFontSize(16);
+  doc.text('Relatório de Inscrições – AVEPIB', 10, y);
+  y += 12;
+
+  if (inscricoes.length === 0) {
+    doc.setFontSize(11);
+    doc.text('Nenhuma inscrição cadastrada.', 10, y);
+    doc.save('relatorio-inscricoes-avepib.pdf');
+    return;
+  }
+
+  /* ===============================
+     1) DETALHAMENTO DAS INSCRIÇÕES
+  =============================== */
+  inscricoes.forEach((inscricao, index) => {
+    doc.setFontSize(14);
+    doc.text(`Inscrição #${index + 1}`, 10, y);
+    y += 8;
+
+    doc.setFontSize(11);
+
+    // Responsável
+    doc.text(
+      `Responsável: ${inscricao.responsavel.nome} (${inscricao.responsavel.idade} anos) – ${inscricao.responsavel.pagante ? 'Pagante' : 'Não Pagante'}`,
+      10,
+      y
+    );
+    y += 6;
+
+    if (inscricao.responsavel.modalidades.length > 0) {
+      doc.text(
+        `Modalidades: ${inscricao.responsavel.modalidades.join(', ')}`,
+        12,
+        y
+      );
+      y += 6;
+    }
+
+    // Cônjuge
+    if (inscricao.conjuge) {
+      doc.text(
+        `Cônjuge: ${inscricao.conjuge.nome} (${inscricao.conjuge.idade} anos) – ${inscricao.conjuge.pagante ? 'Pagante' : 'Não Pagante'}`,
+        10,
+        y
+      );
+      y += 6;
+
+      if (inscricao.conjuge.modalidades.length > 0) {
+        doc.text(
+          `Modalidades: ${inscricao.conjuge.modalidades.join(', ')}`,
+          12,
+          y
+        );
+        y += 6;
       }
     }
-  
+
+    // Filhos
+    if (inscricao.filhos.length > 0) {
+      inscricao.filhos.forEach(filho => {
+        doc.text(
+          `Filho: ${filho.nome} (${filho.idade} anos) – ${filho.pagante ? 'Pagante' : 'Não Pagante'}`,
+          10,
+          y
+        );
+        y += 6;
+
+        if (filho.modalidades.length > 0) {
+          doc.text(
+            `Modalidades: ${filho.modalidades.join(', ')}`,
+            12,
+            y
+          );
+          y += 6;
+        }
+      });
+    }
+
+    // Endereço
+    doc.text(
+      `Endereço: ${inscricao.endereco.rua}, ${inscricao.endereco.numero} – ${inscricao.endereco.bairro}`,
+      10,
+      y
+    );
+    y += 6;
+
+    // Data
+    doc.text(`Data da inscrição: ${inscricao.data}`, 10, y);
+    y += 10;
+
+    if (y > 270) {
+      doc.addPage();
+      y = 15;
+    }
+  });
+
+  /* ===============================
+     2) RESUMO GERAL (IGUAL DASHBOARD)
+  =============================== */
+  doc.addPage();
+  y = 15;
+
+  doc.setFontSize(16);
+  doc.text('Resumo Geral', 10, y);
+  y += 12;
+
+  const nomesPagantes = [];
+  const nomesNaoPagantes = [];
+  const pessoasPorModalidade = {};
+  MODALIDADES.forEach(m => pessoasPorModalidade[m] = []);
+
+  inscricoes.forEach(inscricao => {
+    const pessoas = obterPessoasDaInscricao(inscricao);
+    pessoas.forEach(pessoa => {
+      pessoa.pagante
+        ? nomesPagantes.push(pessoa.nome)
+        : nomesNaoPagantes.push(pessoa.nome);
+
+      if (Array.isArray(pessoa.modalidades)) {
+        pessoa.modalidades.forEach(mod => {
+          pessoasPorModalidade[mod].push({
+            nome: pessoa.nome,
+            pagante: pessoa.pagante
+          });
+        });
+      }
+    });
+  });
+
+  /* Pagantes */
+  doc.setFontSize(14);
+  doc.text('Lista numerada de Pagantes', 10, y);
+  y += 8;
+  doc.setFontSize(11);
+
+  if (nomesPagantes.length === 0) {
+    doc.text('Nenhum pagante cadastrado.', 10, y);
+  } else {
+    nomesPagantes.forEach((nome, i) => {
+      doc.text(`${i + 1}. ${nome}`, 10, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 15; }
+    });
+  }
+
+  y += 10;
+
+  /* Não pagantes */
+  doc.setFontSize(14);
+  doc.text('Lista numerada de Não Pagantes', 10, y);
+  y += 8;
+  doc.setFontSize(11);
+
+  if (nomesNaoPagantes.length === 0) {
+    doc.text('Nenhum não pagante cadastrado.', 10, y);
+  } else {
+    nomesNaoPagantes.forEach((nome, i) => {
+      doc.text(`${i + 1}. ${nome}`, 10, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 15; }
+    });
+  }
+
+  y += 10;
+
+  /* Modalidades */
+  doc.setFontSize(14);
+  doc.text('Listas por Modalidade', 10, y);
+  y += 8;
+
+  MODALIDADES.forEach(modalidade => {
+    doc.setFontSize(12);
+    doc.text(`Modalidade: ${modalidade}`, 10, y);
+    y += 6;
+
+    doc.setFontSize(11);
+    const lista = pessoasPorModalidade[modalidade];
+
+    if (lista.length === 0) {
+      doc.text('Nenhum inscrito nesta modalidade.', 12, y);
+      y += 6;
+    } else {
+      lista.forEach(pessoa => {
+        doc.text(
+          `${pessoa.nome} – ${pessoa.pagante ? 'Pagante' : 'Não Pagante'}`,
+          12,
+          y
+        );
+        y += 6;
+        if (y > 270) { doc.addPage(); y = 15; }
+      });
+    }
+
+    y += 8;
+    if (y > 270) { doc.addPage(); y = 15; }
+  });
+
+  /* SALVAR */
+  doc.save('relatorio-inscricoes-avepib.pdf');
+}
+
+/* ===============================
+   BOTÃO PDF NO DASHBOARD
+=============================== */
+function adicionarBotaoPDF() {
+  const adminHeader = document.querySelector('#adminDashboard .admin-header');
+  if (!adminHeader || document.getElementById('btnSalvarPDF')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'btnSalvarPDF';
+  btn.textContent = 'Salvar PDF';
+  btn.className = 'btn-small';
+  btn.style.marginLeft = '10px';
+
+  btn.addEventListener('click', salvarDashboardPDF);
+  adminHeader.appendChild(btn);
+}
+function excluirInscricao(id) {
+  if (!confirm('Tem certeza que deseja excluir esta inscrição?')) return;
+
+  let inscricoes = db.collection("inscricoes").get().then(snapshot => {
+  snapshot.forEach(doc => {
+    const inscricao = { id: doc.id, ...doc.data() };
+  });
+});
+
+  inscricoes = inscricoes.filter(inscricao => inscricao.id !== id);
+
+db.collection("inscricoes").doc(id).delete();
+
+
+  atualizarDashboard();
+}
