@@ -204,14 +204,21 @@ function inicializarFormulario() {
         });
 
         var filhoHasModalidade = filhoDiv.querySelector('.filho-has-modalidade');
-        var filhoModalidadesWrapper = filhoDiv.querySelector('.fmodalidades-wrapper');
+        
         filhoHasModalidade.addEventListener('change', function() {
+
+          var wrapper = this.closest('.filho').querySelector('.fmodalidades-wrapper');
+
+          if(!wrapper) return;
+
           if (this.value === 'sim') {
-            filhoModalidadesWrapper.classList.remove('hidden');
+            wrapper.classList.remove('hidden');
           } else {
-            filhoModalidadesWrapper.classList.add('hidden');
+            wrapper.classList.add('hidden');
           }
-        });
+          });
+
+   
       }
     });
   }
